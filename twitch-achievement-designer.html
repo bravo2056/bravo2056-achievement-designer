@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRAVO2056 Achievement Designer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=MedievalSharp&family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --surface2: #1e1e24;
+    --surface3: #26262e;
+    --border: #2e2e3a;
+    --border2: #3a3a4a;
+    --text: #e8e6f0;
+    --text-dim: #8a8a9a;
+    --text-dimmer: #555568;
+    --accent: #7c3aed;
+    --accent2: #9d5cff;
+
+    --common: #9ca3af;
+    --uncommon: #4ade80;
+    --rare: #60a5fa;
+    --epic: #c084fc;
+    --legendary: #fbbf24;
+    --secret: #f472b6;
+
+    --common-glow: rgba(156,163,175,0.4);
+    --uncommon-glow: rgba(74,222,128,0.4);
+    --rare-glow: rgba(96,165,250,0.4);
+    --epic-glow: rgba(192,132,252,0.4);
+    --legendary-glow: rgba(251,191,36,0.5);
+    --secret-glow: rgba(244,114,182,0.5);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Crimson Text', Georgia, serif;
+    font-size: 16px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: linear-gradient(135deg, #0d0d0f 0%, #1a0a2e 50%, #0d0d0f 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 40px,
+      rgba(124,58,237,0.03) 40px,
+      rgba(124,58,237,0.03) 41px
+    );
+  }
+  header h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #fbbf24, #f472b6, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header .subtitle {
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .main-layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    grid-template-rows: auto auto;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ===== LEFT PANEL ===== */
+  .controls-panel {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    grid-row: 1 / 3;
+    max-height: calc(100vh - 57px);
+  }
+  .controls-panel::-webkit-scrollbar { width: 6px; }
+  .controls-panel::-webkit-scrollbar-track { background: var(--surface); }
+  .controls-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  .panel-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-section-title {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+  .form-group:last-child { margin-bottom: 0; }
+
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+
+  input[type="text"], textarea, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-family: 'Crimson Text', serif;
+    font-size: 15px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  input[type="text"]:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+  }
+  textarea {
+    resize: vertical;
+    min-height: 70px;
+  }
+  select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238a8a9a' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+  select option { background: #1e1e24; }
+
+  .slider-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface3);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent2);
+    cursor: pointer;
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .slider-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent2);
+    min-width: 40px;
+    text-align: right;
+  }
+
+  .toggle-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .toggle-label { font-size: 13px; color: var(--text); }
+  .toggle-sublabel { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: #4ade80;
+    border-radius: 11px;
+    cursor: not-allowed;
+    transition: 0.2s;
+    display: flex;
+    align-items: center;
+  }
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    left: 3px;
+    transform: translateX(18px);
+    transition: 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  .locked-badge {
+    font-size: 10px;
+    background: rgba(74,222,128,0.15);
+    color: #4ade80;
+    border: 1px solid rgba(74,222,128,0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+
+  /* Emoji picker */
+  .emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    max-height: 120px;
+    overflow-y: auto;
+    padding: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .emoji-grid::-webkit-scrollbar { width: 4px; }
+  .emoji-grid::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .emoji-btn {
+    background: none;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 3px;
+    transition: all 0.15s;
+    text-align: center;
+    line-height: 1;
+  }
+  .emoji-btn:hover { background: var(--surface3); transform: scale(1.2); }
+  .emoji-btn.selected { border-color: var(--accent); background: rgba(124,58,237,0.2); }
+
+  /* Color picker */
+  .color-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .color-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    outline: none;
+  }
+  .color-btn:hover { transform: scale(1.2); }
+  .color-btn.selected { border-color: white; box-shadow: 0 0 0 2px var(--accent); }
+
+  /* Rarity selector */
+  .rarity-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .rarity-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 4px;
+    border-radius: 6px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .rarity-btn:hover { border-color: var(--border2); color: var(--text); }
+  .rarity-btn.selected-common { border-color: var(--common); color: var(--common); background: rgba(156,163,175,0.1); }
+  .rarity-btn.selected-uncommon { border-color: var(--uncommon); color: var(--uncommon); background: rgba(74,222,128,0.1); }
+  .rarity-btn.selected-rare { border-color: var(--rare); color: var(--rare); background: rgba(96,165,250,0.1); }
+  .rarity-btn.selected-epic { border-color: var(--epic); color: var(--epic); background: rgba(192,132,252,0.1); }
+  .rarity-btn.selected-legendary { border-color: var(--legendary); color: var(--legendary); background: rgba(251,191,36,0.1); }
+  .rarity-btn.selected-secret { border-color: var(--secret); color: var(--secret); background: rgba(244,114,182,0.1); }
+
+  .btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), #9d5cff);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    background: var(--surface3);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover { background: var(--surface2); border-color: var(--accent); color: var(--accent2); }
+
+  /* ===== RIGHT PANEL - PREVIEW ===== */
+  .preview-panel {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    min-height: 380px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .preview-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(124,58,237,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 50%, rgba(244,114,182,0.06) 0%, transparent 60%),
+      repeating-linear-gradient(0deg, transparent, transparent 32px, rgba(255,255,255,0.01) 32px, rgba(255,255,255,0.01) 33px),
+      repeating-linear-gradient(90deg, transparent, transparent 32px, rgba(255,255,255,0.01) 32px, rgba(255,255,255,0.01) 33px);
+  }
+
+  .preview-label {
+    position: absolute;
+    top: 16px;
+    left: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dimmer);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .obs-frame {
+    position: absolute;
+    top: 40px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: 420px;
+  }
+
+  /* THE ACHIEVEMENT CARD */
+  .achievement-card {
+    width: 420px;
+    border-radius: 60px;
+    padding: 0;
+    position: relative;
+    overflow: visible;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+    transform: translateX(460px);
+    opacity: 0;
+    transition: none;
+  }
+  .achievement-card.animate-in {
+    animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .achievement-card.animate-out {
+    animation: slideOut 0.4s ease-in forwards;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(460px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(460px); opacity: 0; }
+  }
+
+  .card-inner {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(160deg, #2e2e32 0%, #1c1c1f 60%, #141416 100%);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-top: 1px solid rgba(255,255,255,0.12);
+    border-radius: 60px;
+    overflow: hidden;
+    position: relative;
+    padding: 10px 20px 10px 10px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      inset 0 -1px 0 rgba(0,0,0,0.4),
+      0 4px 24px rgba(0,0,0,0.5);
+  }
+  .card-inner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.03) 0%, transparent 55%);
+    pointer-events: none;
+  }
+
+  /* No side stripe in Xbox style */
+  .card-stripe { display: none; }
+
+  .card-icon-wrap {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    flex-shrink: 0;
+    position: relative;
+    background: #111113;
+    border: 3px solid #4ade80; /* overridden by JS per rarity */
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+    margin-right: 14px;
+    z-index: 1;
+  }
+  .card-icon-wrap::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.08) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .card-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 3px;
+  }
+  .card-eyebrow {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    text-transform: none;
+    color: rgba(255,255,255,0.45);
+  }
+  .card-rarity-badge {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .card-title {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.2;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-flavor {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    font-style: normal;
+    line-height: 1.3;
+    margin-bottom: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 5px;
+  }
+  .card-xp {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.3px;
+  }
+  .card-sparkle {
+    font-size: 12px;
+    animation: sparkle 1s ease-in-out infinite alternate;
+  }
+  @keyframes sparkle {
+    from { opacity: 0.5; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1.1); }
+  }
+
+  .card-glow {
+    position: absolute;
+    inset: -3px;
+    border-radius: 63px;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .achievement-card.animate-in .card-glow {
+    animation: glowPulse 2.5s ease-in-out 0.2s forwards;
+  }
+  @keyframes glowPulse {
+    0% { opacity: 0; }
+    25% { opacity: 0.9; }
+    60% { opacity: 0.6; }
+    100% { opacity: 0.2; }
+  }
+
+  .preview-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+  }
+
+  /* ===== BOTTOM PANEL - COLLECTION ===== */
+  .collection-panel {
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 20px 24px;
+    overflow-y: auto;
+    max-height: 420px;
+  }
+  .collection-panel::-webkit-scrollbar { width: 6px; }
+  .collection-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  .collection-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .collection-title {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .collection-count {
+    background: var(--accent);
+    color: white;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 1px 7px;
+    border-radius: 20px;
+  }
+  .export-btn {
+    background: linear-gradient(135deg, #065f46, #047857);
+    color: #6ee7b7;
+    border: 1px solid #059669;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .export-btn:hover { filter: brightness(1.2); }
+
+  .achievement-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+
+  .achievement-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    transition: all 0.2s;
+    cursor: default;
+  }
+  .achievement-item:hover { border-color: var(--border2); background: var(--surface2); }
+  .achievement-item:hover .preview-achievement-btn { opacity: 1; }
+
+  .item-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--surface3);
+  }
+  .item-info { flex: 1; min-width: 0; }
+  .item-name {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+  }
+  .item-meta {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .tag-rarity { }
+  .tag-trigger {
+    background: rgba(255,255,255,0.06);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .tag-xp {
+    background: rgba(124,58,237,0.15);
+    color: var(--accent2);
+    border: 1px solid rgba(124,58,237,0.3);
+  }
+
+  .item-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .preview-achievement-btn {
+    background: rgba(124,58,237,0.2);
+    border: 1px solid rgba(124,58,237,0.4);
+    color: var(--accent2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .preview-achievement-btn:hover { background: rgba(124,58,237,0.35); }
+  .delete-btn {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: #f87171;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .delete-btn:hover { background: rgba(239,68,68,0.25); }
+
+  /* ===== PROMPT OUTPUT ===== */
+  .prompt-panel {
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
+    padding: 14px 20px;
+  }
+  .prompt-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .prompt-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--text-dimmer);
+    text-transform: uppercase;
+  }
+  .copy-btn {
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    color: var(--text-dim);
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent2); }
+  .copy-btn.copied { border-color: #4ade80; color: #4ade80; }
+  .prompt-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    background: var(--surface);
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  .empty-collection {
+    text-align: center;
+    padding: 32px;
+    color: var(--text-dimmer);
+    font-style: italic;
+  }
+
+  /* Notification toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1000;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⚔️ BRAVO2056 ACHIEVEMENT DESIGNER</h1>
+    <div class="subtitle">Twitch Achievement System Builder — Powered by Claude Code</div>
+  </div>
+</header>
+
+<div class="main-layout">
+
+  <!-- ===== LEFT: CONTROLS ===== -->
+  <div class="controls-panel">
+
+    <div class="panel-section">
+      <div class="panel-section-title">Identity</div>
+
+      <div class="form-group">
+        <label>Achievement Name</label>
+        <input type="text" id="achName" placeholder="e.g. Annoy The Streamer" value="Annoy The Streamer">
+      </div>
+
+      <div class="form-group">
+        <label>Flavor Text (shown on overlay)</label>
+        <textarea id="achFlavor" placeholder="Snarky DCC-style description...">You have achieved something truly special. They noticed you. Unfortunately.</textarea>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-section-title">Icon</div>
+      <div class="emoji-grid" id="emojiGrid"></div>
+      <div style="margin-top:10px;">
+        <label>Upload Image</label>
+        <input type="file" id="iconUpload" accept="image/*" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:13px;cursor:pointer;">
+      </div>
+      <div style="margin-top:8px;">
+        <label>Image URL</label>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="iconUrl" placeholder="https://..." style="flex:1;">
+          <button onclick="applyIconUrl()" style="background:var(--surface3);border:1px solid var(--border2);color:var(--text);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;">Use</button>
+        </div>
+      </div>
+      <div id="iconPreviewWrap" style="display:none;margin-top:8px;text-align:center;">
+        <img id="iconPreviewImg" style="width:56px;height:56px;object-fit:contain;border-radius:8px;border:1px solid var(--border2);">
+        <button onclick="clearCustomIcon()" style="display:block;width:100%;margin-top:6px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:4px;border-radius:4px;cursor:pointer;font-size:11px;">✕ Remove Image</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-section-title">Rarity</div>
+      <div class="rarity-grid" id="rarityGrid">
+        <button class="rarity-btn" data-rarity="common">Common</button>
+        <button class="rarity-btn" data--rarity="uncommon">Uncommon</button>
+        <button class="rarity-btn" data-rarity="rare">Rare</button>
+        <button class="rarity-btn" data-rarity="epic">Epic</button>
+        <button class="rarity-btn" data-rarity="legendary">Legendary</button>
+        <button class="rarity-btn" data-rarity="secret">⭐ Secret</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-section-title">Configuration</div>
+
+      <div class="form-group">
+        <label>Trigger Type</label>
+        <select id="achTrigger">
+          <option value="auto">Auto — Chat Event</option>
+          <option value="manual" selected>Manual — Streamer Grants</option>
+          <option value="mixed">Mixed — Condition + Approval</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Category</label>
+        <select id="achCategory">
+          <option value="Chat Activity">Chat Activity</option>
+          <option value="Bits/Subs">Bits / Subs</option>
+          <option value="Raids">Raids</option>
+          <option value="Streamer Annoyance" selected>Streamer Annoyance</option>
+          <option value="Cursed">Cursed</option>
+          <option value="Legendary">Legendary</option>
+          <option value="Secret">Secret</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Sound Effect</label>
+        <select id="achSound" onchange="onSoundChange(this.value)">
+          <option value="fanfare">🎺 Fanfare</option>
+          <option value="sad_trombone">🎷 Sad Trombone</option>
+          <option value="evil_laugh">😈 Evil Laugh</option>
+          <option value="dungeon_bell">🔔 Dungeon Bell</option>
+          <option value="custom">🎵 Custom File</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="customSoundGroup" style="display:none">
+        <label>Sound File Path</label>
+        <input type="text" id="customSoundPath" placeholder="C:\stream\sounds\fanfare.mp3"
+          style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text-primary);font-size:13px;font-family:monospace;"
+          oninput="state.soundFile = this.value.trim()">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:5px;">Drop your MP3/WAV files in a consistent folder, e.g. <code style="color:var(--accent)">C:\stream\sounds\</code></div>
+      </div>
+
+      <div class="form-group">
+        <label>XP Value</label>
+        <div class="slider-group">
+          <input type="range" id="achXP" min="0" max="1000" step="25" value="500">
+          <span class="slider-value" id="xpDisplay">500 XP</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Badge Color</label>
+        <div class="color-grid" id="colorGrid"></div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-section-title">Tracking</div>
+      <div class="toggle-group">
+        <div>
+          <div class="toggle-label">One Per Viewer</div>
+          <div class="toggle-sublabel">Achievement earned only once per user</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="locked-badge">LOCKED ON</span>
+          <label class="toggle-switch">
+            <input type="checkbox" checked disabled>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <button class="btn-primary" id="addToCollectionBtn">⚔️ Add to Collection</button>
+    </div>
+
+    <div class="panel-section" style="border-bottom:none;">
+      <div class="prompt-label" style="margin-bottom:8px;">Streamer.bot Export Prompt</div>
+      <div class="prompt-text" id="promptText" style="font-size:11px;line-height:1.7;"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+        <button class="copy-btn" id="copyPromptBtn">Copy Prompt</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== RIGHT: PREVIEW ===== -->
+  <div class="preview-panel">
+    <div class="preview-bg"></div>
+    <div class="preview-label">OBS OVERLAY PREVIEW — LIVE</div>
+
+    <div class="obs-frame">
+      <div class="achievement-card" id="achievementCard">
+        <div class="card-glow" id="cardGlow"></div>
+        <div class="card-inner">
+          <div class="card-stripe" id="cardStripe"></div>
+          <div class="card-icon-wrap" id="cardIcon"></div>
+          <div class="card-content">
+            <div class="card-header">
+              <div class="card-eyebrow">Achievement Unlocked</div>
+              <div class="card-rarity-badge" id="cardRarityBadge"></div>
+            </div>
+            <div class="card-title" id="cardTitle"></div>
+            <div class="card-flavor" id="cardFlavor"></div>
+            <div class="card-footer">
+              <div class="card-xp" id="cardXP"></div>
+              <span class="card-sparkle" id="cardSparkle">✨</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="preview-controls">
+      <button class="btn-secondary" id="fireAnimBtn">▶ Fire Test Animation</button>
+      <button class="btn-secondary" id="resetAnimBtn">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- ===== BOTTOM: COLLECTION ===== -->
+  <div class="collection-panel" style="grid-column: 2 / 3;">
+    <div class="collection-header">
+      <div class="collection-title">
+        Achievement Collection
+        <span class="collection-count" id="collectionCount">0</span>
+      </div>
+      <button class="export-btn" id="exportBtn">⬇ Export JSON</button>
+    </div>
+    <div class="achievement-grid" id="achievementGrid"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// =============================================
+// STATE
+// =============================================
+const EMOJIS = [
+  '⚔️','🛡️','💀','👹','🐉','🔥','💎','👑',
+  '🗡️','🏹','🪄','⚡','🌟','💀','🎭','🔮',
+  '🧿','🪬','🎪','🃏','🎲','🏆','🥇','🎖️',
+  '👾','🤡','😈','🤖','👽','💩','🦑','🕷️',
+  '🍺','☠️','🦴','🪦','🔔','📯','🎺','🎷',
+  '🚽','💸','🧻','🪤','🎣','🪆','🎠','🌋'
+];
+
+const COLORS = [
+  '#9ca3af','#4ade80','#60a5fa','#c084fc','#fbbf24','#f472b6',
+  '#f87171','#fb923c','#34d399','#38bdf8','#818cf8','#e879f9',
+  '#a3e635','#facc15','#fb7185','#7c3aed','#0ea5e9','#10b981'
+];
+
+const RARITY_CONFIG = {
+  common:    { color: '#9ca3af', glow: 'rgba(156,163,175,0.5)', badge: 'rgba(156,163,175,0.15)', label: 'COMMON',    sparkle: '⚪' },
+  uncommon:  { color: '#4ade80', glow: 'rgba(74,222,128,0.5)',  badge: 'rgba(74,222,128,0.15)',  label: 'UNCOMMON',  sparkle: '💚' },
+  rare:      { color: '#60a5fa', glow: 'rgba(96,165,250,0.5)',  badge: 'rgba(96,165,250,0.15)',  label: 'RARE',      sparkle: '💙' },
+  epic:      { color: '#c084fc', glow: 'rgba(192,132,252,0.5)', badge: 'rgba(192,132,252,0.15)', label: 'EPIC',      sparkle: '💜' },
+  legendary: { color: '#fbbf24', glow: 'rgba(251,191,36,0.6)',  badge: 'rgba(251,191,36,0.15)',  label: 'LEGENDARY', sparkle: '⭐' },
+  secret:    { color: '#f472b6', glow: 'rgba(244,114,182,0.6)', badge: 'rgba(244,114,182,0.15)', label: '??? SECRET',sparkle: '🌸' },
+};
+
+const DEFAULT_STATE = {
+  name: 'Annoy The Streamer',
+  flavor: 'You have achieved something truly special. They noticed you. Unfortunately.',
+  icon: '😈',
+  iconImage: null,
+  rarity: 'legendary',
+  trigger: 'manual',
+  category: 'Streamer Annoyance',
+  sound: 'fanfare',
+  soundFile: null,
+  xp: 500,
+  color: '#fbbf24',
+  onePerViewer: true
+};
+
+let state = { ...DEFAULT_STATE };
+
+const SAMPLE_ACHIEVEMENTS = [
+  {
+    id: 'annoy_the_streamer', name: 'Annoy The Streamer',
+    description: 'You have achieved something truly special. They noticed you. Unfortunately.',
+    trigger: 'manual', category: 'Streamer Annoyance', rarity: 'legendary',
+    icon: '😈', xp: 1000, onePerViewer: true, sound: 'evil_laugh',
+    color: '#fbbf24', earnedBy: []
+  },
+  {
+    id: 'first_blood', name: 'First Blood',
+    description: 'You typed words. Into a computer. Groundbreaking.',
+    trigger: 'auto', category: 'Chat Activity', rarity: 'common',
+    icon: '🩸', xp: 25, onePerViewer: true, sound: 'dungeon_bell',
+    color: '#f87171', earnedBy: []
+  },
+  {
+    id: 'floor_is_chat', name: 'The Floor Is Chat',
+    description: 'You live here now. We\'re concerned.',
+    trigger: 'auto', category: 'Chat Activity', rarity: 'uncommon',
+    icon: '💬', xp: 150, onePerViewer: true, sound: 'fanfare',
+    color: '#4ade80', earnedBy: []
+  },
+  {
+    id: 'unsolicited_financial_advice', name: 'Unsolicited Financial Advice',
+    description: 'Nobody asked. You delivered anyway. Carl would be horrified.',
+    trigger: 'manual', category: 'Streamer Annoyance', rarity: 'rare',
+    icon: '💸', xp: 300, onePerViewer: true, sound: 'sad_trombone',
+    color: '#60a5fa', earnedBy: []
+  },
+  {
+    id: 'witnessed_a_death', name: 'Witnessed A Death',
+    description: 'You saw things. Horrible things. And you stayed. Weirdo.',
+    trigger: 'auto', category: 'Cursed', rarity: 'epic',
+    icon: '💀', xp: 500, onePerViewer: true, sound: 'evil_laugh',
+    color: '#c084fc', earnedBy: []
+  },
+  {
+    id: 'shenanigans_survivor', name: 'Shenanigans Survivor',
+    description: 'Something went wrong on stream. Gloriously wrong. You stayed for all of it. Respect.',
+    trigger: 'auto', category: 'Chat Activity', rarity: 'uncommon',
+    icon: '🎪', xp: 150, onePerViewer: true, sound: 'dungeon_bell',
+    color: '#4ade80', earnedBy: []
+  },
+  {
+    id: 'good_vibes_certified', name: 'Good Vibes Certified',
+    description: "You've been here long enough that the vibe is now part of you. There is no escape. You are the vibe.",
+    trigger: 'auto', category: 'Chat Activity', rarity: 'epic',
+    icon: '✨', xp: 500, onePerViewer: true, sound: 'fanfare',
+    color: '#c084fc', earnedBy: []
+  },
+  {
+    id: 'the_arty_did_it', name: 'The Arty Did It',
+    description: 'A great run. A beautiful moment. Annihilated by artillery from somewhere off the map. You saw it. So did Damien. Neither of you will recover.',
+    trigger: 'manual', category: 'Cursed', rarity: 'legendary',
+    icon: '💥', xp: 1000, onePerViewer: true, sound: 'evil_laugh',
+    color: '#fbbf24', earnedBy: []
+  }
+];
+
+let collection = JSON.parse(JSON.stringify(SAMPLE_ACHIEVEMENTS));
+let animTimeout = null;
+
+// =============================================
+// INIT
+// =============================================
+function init() {
+  buildEmojiGrid();
+  buildColorGrid();
+  buildRarityGrid();
+  bindEvents();
+  loadStateToForm();
+  renderPreview();
+  renderCollection();
+  updatePrompt();
+  // Auto-fire animation on load
+  setTimeout(() => fireAnimation(), 400);
+}
+
+function buildEmojiGrid() {
+  const grid = document.getElementById('emojiGrid');
+  EMOJIS.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.className = 'emoji-btn';
+    btn.textContent = emoji;
+    btn.title = emoji;
+    btn.addEventListener('click', () => {
+      state.icon = emoji;
+      document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      renderPreview();
+      updatePrompt();
+    });
+    if (emoji === state.icon) btn.classList.add('selected');
+    grid.appendChild(btn);
+  });
+}
+
+function buildColorGrid() {
+  const grid = document.getElementById('colorGrid');
+  COLORS.forEach(color => {
+    const btn = document.createElement('button');
+    btn.className = 'color-btn';
+    btn.style.background = color;
+    btn.title = color;
+    btn.addEventListener('click', () => {
+      state.color = color;
+      document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      renderPreview();
+      updatePrompt();
+    });
+    if (color === state.color) btn.classList.add('selected');
+    grid.appendChild(btn);
+  });
+}
+
+function buildRarityGrid() {
+  const grid = document.getElementById('rarityGrid');
+  grid.innerHTML = '';
+  const rarities = ['common','uncommon','rare','epic','legendary','secret'];
+  const labels = ['⬜ Common','🟢 Uncommon','🔵 Rare','🟣 Epic','🌟 Legendary','⭐ Secret'];
+  rarities.forEach((r, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'rarity-btn';
+    btn.dataset.rarity = r;
+    btn.textContent = labels[i];
+    btn.addEventListener('click', () => {
+      state.rarity = r;
+      document.querySelectorAll('.rarity-btn').forEach(b => {
+        b.className = 'rarity-btn';
+      });
+      btn.className = `rarity-btn selected-${r}`;
+      renderPreview();
+      updatePrompt();
+    });
+    if (r === state.rarity) btn.className = `rarity-btn selected-${r}`;
+    grid.appendChild(btn);
+  });
+}
+
+function loadStateToForm() {
+  document.getElementById('achName').value = state.name;
+  document.getElementById('achFlavor').value = state.flavor;
+  document.getElementById('achTrigger').value = state.trigger;
+  document.getElementById('achCategory').value = state.category;
+  document.getElementById('achSound').value = state.sound;
+  document.getElementById('customSoundGroup').style.display = state.sound === 'custom' ? 'block' : 'none';
+  document.getElementById('customSoundPath').value = state.soundFile || '';
+  document.getElementById('achXP').value = state.xp;
+  document.getElementById('xpDisplay').textContent = state.xp + ' XP';
+}
+
+function bindEvents() {
+  const bind = (id, field, transform) => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+      state[field] = transform ? transform(el.value) : el.value;
+      renderPreview();
+      updatePrompt();
+    });
+  };
+
+  bind('achName', 'name');
+  bind('achFlavor', 'flavor');
+  bind('achTrigger', 'trigger');
+  bind('achCategory', 'category');
+  bind('achSound', 'sound');
+  bind('achXP', 'xp', v => parseInt(v));
+
+  document.getElementById('achXP').addEventListener('input', function() {
+    document.getElementById('xpDisplay').textContent = this.value + ' XP';
+  });
+
+  document.getElementById('addToCollectionBtn').addEventListener('click', addToCollection);
+  document.getElementById('fireAnimBtn').addEventListener('click', fireAnimation);
+  document.getElementById('resetAnimBtn').addEventListener('click', resetAnimation);
+  document.getElementById('exportBtn').addEventListener('click', exportJSON);
+  document.getElementById('copyPromptBtn').addEventListener('click', copyPrompt);
+}
+
+// =============================================
+// PREVIEW RENDER
+// =============================================
+function renderPreview() {
+  const cfg = RARITY_CONFIG[state.rarity] || RARITY_CONFIG.common;
+
+  // Icon: circular ring color = rarity color
+  const iconWrap = document.getElementById('cardIcon');
+  if (state.iconImage) {
+    iconWrap.innerHTML = `<img src="${state.iconImage}" style="width:44px;height:44px;object-fit:contain;border-radius:6px;">`;
+  } else {
+    iconWrap.textContent = state.icon;
+  }
+  iconWrap.style.borderColor = cfg.color;
+  iconWrap.style.boxShadow = `0 0 12px ${cfg.glow}, 0 0 0 1px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)`;
+
+  document.getElementById('cardTitle').textContent = state.name || 'Achievement Name';
+  document.getElementById('cardFlavor').textContent = state.flavor || 'No flavor text set.';
+  document.getElementById('cardXP').textContent = `+${state.xp} G`;
+  document.getElementById('cardSparkle').textContent = cfg.sparkle;
+
+  // Eyebrow: rarity-aware label
+  const eyebrow = document.querySelector('.card-eyebrow');
+  if (eyebrow) {
+    eyebrow.textContent = state.rarity === 'common' ? 'Achievement unlocked' : `${cfg.label.charAt(0) + cfg.label.slice(1).toLowerCase()} achievement unlocked`;
+    eyebrow.style.color = state.rarity === 'common' ? 'rgba(255,255,255,0.45)' : cfg.color + 'cc';
+  }
+
+  const badge = document.getElementById('cardRarityBadge');
+  badge.style.display = 'none'; // rarity shown in eyebrow Xbox-style
+
+  const glow = document.getElementById('cardGlow');
+  glow.style.boxShadow = `0 0 20px 6px ${cfg.glow}`;
+}
+
+// =============================================
+// ANIMATION
+// =============================================
+// =============================================
+// AUDIO ENGINE
+// =============================================
+function playSound(type) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+  const sounds = {
+    fanfare: () => {
+      const notes = [523, 659, 784, 1047];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'square';
+        gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.12);
+        gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + i * 0.12 + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.25);
+        osc.start(ctx.currentTime + i * 0.12);
+        osc.stop(ctx.currentTime + i * 0.12 + 0.3);
+      });
+    },
+    sad_trombone: () => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(400, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 1.2);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.4);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 1.5);
+    },
+    evil_laugh: () => {
+      [0, 0.15, 0.3, 0.5, 0.7].forEach(t => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180 + t * 60, ctx.currentTime + t);
+        osc.frequency.linearRampToValueAtTime(220 + t * 80, ctx.currentTime + t + 0.1);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.12);
+        osc.start(ctx.currentTime + t);
+        osc.stop(ctx.currentTime + t + 0.15);
+      });
+    },
+    dungeon_bell: () => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.5);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 3);
+    },
+    custom: () => {
+      if (state.soundFile) {
+        // Normalize path to file:/// URL for browser playback
+        const url = state.soundFile.startsWith('http') ? state.soundFile
+          : 'file:///' + state.soundFile.replace(/\\/g, '/').replace(/^\/+/, '');
+        const audio = new Audio(url);
+        audio.volume = 0.8;
+        audio.play().catch(e => console.warn('Custom sound playback failed — check the path:', e));
+        return;
+      }
+      // Fallback tone if no path set
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = 440;
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.5);
+    }
+  };
+
+  (sounds[type] || sounds.custom)();
+}
+
+function onSoundChange(val) {
+  state.sound = val;
+  document.getElementById('customSoundGroup').style.display = val === 'custom' ? 'block' : 'none';
+}
+
+function fireAnimation() {
+  const card = document.getElementById('achievementCard');
+  clearTimeout(animTimeout);
+  card.classList.remove('animate-in', 'animate-out');
+  void card.offsetWidth;
+  card.classList.add('animate-in');
+  playSound(state.sound || 'fanfare');
+
+  animTimeout = setTimeout(() => {
+    card.classList.remove('animate-in');
+    card.classList.add('animate-out');
+    setTimeout(() => card.classList.remove('animate-out'), 400);
+  }, 4000);
+}
+
+function resetAnimation() {
+  const card = document.getElementById('achievementCard');
+  clearTimeout(animTimeout);
+  card.classList.remove('animate-in', 'animate-out');
+  card.style.transform = 'translateX(420px)';
+  card.style.opacity = '0';
+  setTimeout(() => { card.style.transform = ''; card.style.opacity = ''; }, 50);
+}
+
+// =============================================
+// COLLECTION
+// =============================================
+// =============================================
+// ICON IMAGE HANDLERS
+// =============================================
+function applyIconUrl() {
+  const url = document.getElementById('iconUrl').value.trim();
+  if (!url) return;
+  state.iconImage = url;
+  document.getElementById('iconPreviewImg').src = url;
+  document.getElementById('iconPreviewWrap').style.display = 'block';
+  document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+  renderPreview();
+  updatePrompt();
+}
+
+function clearCustomIcon() {
+  state.iconImage = null;
+  document.getElementById('iconUrl').value = '';
+  document.getElementById('iconUpload').value = '';
+  document.getElementById('iconPreviewWrap').style.display = 'none';
+  renderPreview();
+  updatePrompt();
+}
+
+document.getElementById('iconUpload').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    state.iconImage = e.target.result;
+    document.getElementById('iconPreviewImg').src = e.target.result;
+    document.getElementById('iconPreviewWrap').style.display = 'block';
+    document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+    renderPreview();
+    updatePrompt();
+  };
+  reader.readAsDataURL(file);
+});
+
+function generateId(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') + '_' + Date.now().toString(36);
+}
+
+function addToCollection() {
+  const achievement = {
+    id: generateId(state.name || 'achievement'),
+    name: state.name || 'Unnamed Achievement',
+    description: state.flavor || '',
+    trigger: state.trigger,
+    category: state.category,
+    rarity: state.rarity,
+    icon: state.icon,
+    xp: state.xp,
+    onePerViewer: true,
+    sound: state.sound,
+    soundFile: state.soundFile || null,
+    color: state.color,
+    earnedBy: []
+  };
+  collection.push(achievement);
+  renderCollection();
+  showToast(`⚔️ "${achievement.name}" added to collection!`);
+}
+
+function deleteFromCollection(id) {
+  collection = collection.filter(a => a.id !== id);
+  renderCollection();
+  showToast('🗑️ Achievement removed.');
+}
+
+function previewFromCollection(id) {
+  const a = collection.find(x => x.id === id);
+  if (!a) return;
+  state = {
+    name: a.name, flavor: a.description, icon: a.icon,
+    rarity: a.rarity, trigger: a.trigger, category: a.category,
+    sound: a.sound, xp: a.xp, color: a.color, onePerViewer: true
+  };
+  loadStateToForm();
+  buildEmojiGrid();
+  buildColorGrid();
+  buildRarityGrid();
+  renderPreview();
+  updatePrompt();
+  fireAnimation();
+  document.querySelector('.controls-panel').scrollTop = 0;
+}
+
+function renderCollection() {
+  const grid = document.getElementById('achievementGrid');
+  const count = document.getElementById('collectionCount');
+  count.textContent = collection.length;
+
+  if (collection.length === 0) {
+    grid.innerHTML = '<div class="empty-collection">No achievements yet. Create your first one! ⚔️</div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  collection.forEach(a => {
+    const cfg = RARITY_CONFIG[a.rarity] || RARITY_CONFIG.common;
+    const item = document.createElement('div');
+    item.className = 'achievement-item';
+    item.innerHTML = `
+      <div class="item-icon" style="border:1px solid ${cfg.color}44; color:${cfg.color};">${a.icon}</div>
+      <div class="item-info">
+        <div class="item-name" title="${a.name}">${a.name}</div>
+        <div class="item-meta">
+          <span class="tag tag-rarity" style="background:${cfg.badge};color:${cfg.color};border:1px solid ${cfg.color}44;">${cfg.label}</span>
+          <span class="tag tag-trigger">${a.trigger}</span>
+          <span class="tag tag-xp">+${a.xp}xp</span>
+        </div>
+      </div>
+      <div class="item-actions">
+        <button class="preview-achievement-btn" onclick="previewFromCollection('${a.id}')">▶ Preview</button>
+        <button class="delete-btn" onclick="deleteFromCollection('${a.id}')">✕ Remove</button>
+      </div>
+    `;
+    grid.appendChild(item);
+  });
+}
+
+// =============================================
+// EXPORT
+// =============================================
+function exportJSON() {
+  const data = { achievements: collection };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'dcc-achievements.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📦 Exported dcc-achievements.json!');
+}
+
+// =============================================
+// PROMPT OUTPUT
+// =============================================
+function updatePrompt() {
+  const cfg = RARITY_CONFIG[state.rarity] || RARITY_CONFIG.common;
+  const triggerMap = { auto: 'automatically on a chat event', manual: 'manually by the streamer', mixed: 'via mixed trigger (condition + streamer approval)' };
+  const soundMap = { fanfare: 'fanfare', sad_trombone: 'sad trombone', evil_laugh: 'evil laugh', dungeon_bell: 'dungeon bell', custom: 'custom audio' };
+
+  const prompt = `Create a Streamer.bot action for the "${state.name || 'Achievement'}" achievement.\n` +
+    `Rarity: ${cfg.label} | Category: ${state.category} | XP: +${state.xp}\n` +
+    `Trigger: Assigned ${triggerMap[state.trigger] || state.trigger}.\n` +
+    `Overlay: Display OBS alert with icon "${state.icon}", badge color ${state.color}, play ${soundMap[state.sound] || state.sound} sound.\n` +
+    `Flavor text: "${state.flavor || 'No flavor text'}"\n` +
+    `Storage: Track in JSON file — check earnedBy[] array before granting. onePerViewer = true. Append username to earnedBy[] on grant.`;
+
+  document.getElementById('promptText').textContent = prompt;
+}
+
+function copyPrompt() {
+  const text = document.getElementById('promptText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyPromptBtn');
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy Prompt'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// =============================================
+// TOAST
+// =============================================
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// =============================================
+// RUN
+// =============================================
+init();
+</script>
+</body>
+</html>

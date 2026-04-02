@@ -1,0 +1,7 @@
+node_modules/
+.claude/
+*.pptx
+build-guide.js
+designer-screenshot.png
+package.json
+package-lock.json

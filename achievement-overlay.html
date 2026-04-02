@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Achievement Overlay</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    overflow: hidden;
+    width: 1920px;
+    height: 1080px;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  #achievement-container {
+    position: fixed;
+    bottom: 80px;
+    right: -600px;
+    width: 520px;
+    transition: right 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 9999;
+  }
+
+  #achievement-container.show {
+    right: 30px;
+  }
+
+  #achievement-container.hide {
+    right: -600px;
+    transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .achievement-card {
+    position: relative;
+    border-radius: 12px;
+    padding: 18px 20px;
+    background: linear-gradient(135deg, rgba(15,15,25,0.97) 0%, rgba(25,25,40,0.97) 100%);
+    border: 1px solid var(--rarity-color);
+    box-shadow:
+      0 0 20px var(--rarity-glow),
+      0 0 60px var(--rarity-glow),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+    overflow: hidden;
+  }
+
+  .achievement-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--rarity-color), transparent);
+  }
+
+  .achievement-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at top right, var(--rarity-badge) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .rarity-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--rarity-color);
+    background: var(--rarity-badge);
+    border: 1px solid var(--rarity-color);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .achievement-body {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .achievement-icon {
+    font-size: 48px;
+    line-height: 1;
+    filter: drop-shadow(0 0 8px var(--rarity-glow));
+    flex-shrink: 0;
+    animation: iconPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes iconPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+
+  .achievement-text { flex: 1; min-width: 0; }
+
+  .achievement-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .achievement-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--rarity-color);
+    line-height: 1.2;
+    text-shadow: 0 0 20px var(--rarity-glow);
+    margin-bottom: 5px;
+  }
+
+  .achievement-desc {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.4;
+    font-style: italic;
+  }
+
+  .achievement-xp {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .xp-bar-bg {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .xp-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--rarity-color);
+    border-radius: 2px;
+    box-shadow: 0 0 8px var(--rarity-glow);
+    transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1) 0.3s;
+  }
+
+  .xp-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--rarity-color);
+    white-space: nowrap;
+  }
+
+  .viewer-tag {
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 4px;
+  }
+
+  /* Sparkles */
+  .sparkles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .sparkle {
+    position: absolute;
+    font-size: 14px;
+    animation: sparkleFly 2s ease-out forwards;
+    opacity: 0;
+  }
+
+  @keyframes sparkleFly {
+    0%   { opacity: 1; transform: translate(0,0) scale(0.5); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.2); }
+  }
+
+  /* Status indicator (dev mode) */
+  #status {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.5);
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="status"></div>
+
+<div id="achievement-container">
+  <div class="achievement-card" id="achievementCard">
+    <div class="sparkles" id="sparkles"></div>
+    <div class="rarity-badge" id="rarityBadge">ACHIEVEMENT</div>
+    <div class="achievement-body">
+      <div class="achievement-icon" id="achIcon">🏆</div>
+      <div class="achievement-text">
+        <div class="achievement-label">Achievement Unlocked</div>
+        <div class="achievement-name" id="achName">Achievement Name</div>
+        <div class="achievement-desc" id="achDesc">Description goes here.</div>
+        <div class="viewer-tag" id="viewerTag"></div>
+      </div>
+    </div>
+    <div class="achievement-xp">
+      <div class="xp-bar-bg"><div class="xp-bar-fill" id="xpBar"></div></div>
+      <div class="xp-label" id="xpLabel">+0 XP</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const RARITY = {
+  common:    { color: '#9ca3af', glow: 'rgba(156,163,175,0.5)', badge: 'rgba(156,163,175,0.15)', label: 'COMMON',     sparkle: '⚪' },
+  uncommon:  { color: '#4ade80', glow: 'rgba(74,222,128,0.5)',  badge: 'rgba(74,222,128,0.15)',  label: 'UNCOMMON',   sparkle: '💚' },
+  rare:      { color: '#60a5fa', glow: 'rgba(96,165,250,0.5)',  badge: 'rgba(96,165,250,0.15)',  label: 'RARE',       sparkle: '💙' },
+  epic:      { color: '#c084fc', glow: 'rgba(192,132,252,0.5)', badge: 'rgba(192,132,252,0.15)', label: 'EPIC',       sparkle: '💜' },
+  legendary: { color: '#fbbf24', glow: 'rgba(251,191,36,0.6)',  badge: 'rgba(251,191,36,0.15)',  label: 'LEGENDARY',  sparkle: '⭐' },
+  secret:    { color: '#f472b6', glow: 'rgba(244,114,182,0.6)', badge: 'rgba(244,114,182,0.15)', label: '??? SECRET', sparkle: '🌸' },
+};
+
+const container  = document.getElementById('achievement-container');
+const card       = document.getElementById('achievementCard');
+const rarityBadge= document.getElementById('rarityBadge');
+const achIcon    = document.getElementById('achIcon');
+const achName    = document.getElementById('achName');
+const achDesc    = document.getElementById('achDesc');
+const viewerTag  = document.getElementById('viewerTag');
+const xpBar      = document.getElementById('xpBar');
+const xpLabel    = document.getElementById('xpLabel');
+const sparkles   = document.getElementById('sparkles');
+const status     = document.getElementById('status');
+
+let hideTimer = null;
+
+// ─── Audio Engine ────────────────────────────────────────────────────────────
+function playSound(type) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const sounds = {
+    fanfare: () => {
+      [523, 659, 784, 1047].forEach((freq, i) => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = freq; osc.type = 'square';
+        gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.12);
+        gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + i * 0.12 + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.25);
+        osc.start(ctx.currentTime + i * 0.12);
+        osc.stop(ctx.currentTime + i * 0.12 + 0.3);
+      });
+    },
+    sad_trombone: () => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(400, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 1.2);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.4);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 1.5);
+    },
+    evil_laugh: () => {
+      [0, 0.15, 0.3, 0.5, 0.7].forEach(t => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180 + t * 60, ctx.currentTime + t);
+        osc.frequency.linearRampToValueAtTime(220 + t * 80, ctx.currentTime + t + 0.1);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.12);
+        osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + 0.15);
+      });
+    },
+    dungeon_bell: () => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.5);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 3);
+    },
+    custom: () => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = 440;
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.5);
+    }
+  };
+  (sounds[type] || sounds.fanfare)();
+}
+
+function showAchievement(data) {
+  const rarity = RARITY[data.rarity] || RARITY.common;
+
+  // Play sound
+  playSound(data.sound || 'fanfare');
+
+  // Apply rarity CSS vars
+  card.style.setProperty('--rarity-color', rarity.color);
+  card.style.setProperty('--rarity-glow',  rarity.glow);
+  card.style.setProperty('--rarity-badge', rarity.badge);
+
+  // Populate content
+  rarityBadge.textContent = rarity.label;
+  achIcon.textContent     = data.icon || '🏆';
+  achName.textContent     = data.name || 'Achievement Unlocked';
+  achDesc.textContent     = data.description || '';
+  xpLabel.textContent     = `+${data.xp || 0} XP`;
+  viewerTag.textContent   = data.viewer ? `Earned by ${data.viewer}` : '';
+
+  // Reset XP bar
+  xpBar.style.transition = 'none';
+  xpBar.style.width = '0%';
+
+  // Spawn sparkles
+  spawnSparkles(rarity.sparkle);
+
+  // Slide in
+  container.classList.remove('hide');
+  void container.offsetWidth; // force reflow
+  container.classList.add('show');
+
+  // Animate XP bar
+  setTimeout(() => {
+    xpBar.style.transition = 'width 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
+    xpBar.style.width = '100%';
+  }, 200);
+
+  // Auto hide after 6 seconds
+  if (hideTimer) clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => hideAchievement(), 6000);
+}
+
+function hideAchievement() {
+  container.classList.remove('show');
+  container.classList.add('hide');
+  setTimeout(() => { sparkles.innerHTML = ''; }, 600);
+}
+
+function spawnSparkles(emoji) {
+  sparkles.innerHTML = '';
+  const count = 10;
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'sparkle';
+    el.textContent = emoji;
+    const x = Math.random() * 100;
+    const y = Math.random() * 100;
+    const dx = (Math.random() - 0.5) * 80 + 'px';
+    const dy = -(Math.random() * 60 + 20) + 'px';
+    el.style.cssText = `left:${x}%;top:${y}%;--dx:${dx};--dy:${dy};animation-delay:${Math.random()*0.4}s`;
+    sparkles.appendChild(el);
+  }
+}
+
+// ─── WebSocket connection to Streamer.bot ───────────────────────────────────
+const WS_URL = 'ws://127.0.0.1:8080/';
+let ws, reconnectTimer;
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    setStatus('🟢 Connected to Streamer.bot');
+
+    if (reconnectTimer) { clearInterval(reconnectTimer); reconnectTimer = null; }
+
+    // Subscribe uses lowercase "general" — case sensitive
+    ws.send(JSON.stringify({
+      request: 'Subscribe',
+      id: 'achievement-overlay',
+      events: {
+        general: ['Custom']
+      }
+    }));
+  };
+
+  ws.onmessage = (event) => {
+
+    try {
+      const msg = JSON.parse(event.data);
+
+      // Streamer.bot format: { event: { source, type }, data: { name, rarity, ... } }
+      if (msg.data && msg.data.name && msg.data.rarity) {
+        showAchievement(msg.data);
+        return;
+      }
+    } catch(e) {
+      console.warn('WS parse error:', e);
+    }
+  };
+
+  ws.onclose = () => {
+
+    setStatus('🔴 Disconnected — retrying...');
+    if (!reconnectTimer) reconnectTimer = setInterval(connect, 5000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+
+function setStatus(msg) {
+  // Only show status if ?debug in URL
+  if (location.search.includes('debug')) {
+    status.style.display = 'block';
+    status.textContent = msg;
+  }
+}
+
+connect();
+
+// ─── Test hotkey: press T to fire a test achievement ────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.key === 't' || e.key === 'T') {
+    showAchievement({
+      name: 'Annoy The Streamer',
+      description: 'You have achieved something truly special. They noticed you. Unfortunately.',
+      icon: '😈',
+      rarity: 'legendary',
+      xp: 1000,
+      viewer: 'TestViewer'
+    });
+  }
+  if (e.key === 'Escape') hideAchievement();
+});
+</script>
+</body>
+</html>
