@@ -578,6 +578,20 @@ function loadFile(input) {
   reader.readAsText(file);
 }
 
+const DATA_URL = 'https://bravo2056.github.io/bravo2056-achievement-designer/achievements-data.json';
+
+// Auto-fetch live data on page load
+document.addEventListener('DOMContentLoaded', () => {
+  fetch(DATA_URL + '?t=' + Date.now())
+    .then(r => r.json())
+    .then(parsed => {
+      if (parsed.achievements) data = parsed;
+      else if (Array.isArray(parsed)) data = { achievements: parsed };
+      renderAll();
+    })
+    .catch(() => {}); // silently fall back to manual import if offline
+});
+
 function loadSampleData() {
   data = {
     achievements: [
