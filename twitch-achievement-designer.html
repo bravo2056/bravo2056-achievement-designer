@@ -898,11 +898,13 @@
       </div>
 
       <div class="form-group" id="customSoundGroup" style="display:none">
-        <label>Sound File Path</label>
-        <input type="text" id="customSoundPath" placeholder="C:\stream\sounds\fanfare.mp3"
-          style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text-primary);font-size:13px;font-family:monospace;"
-          oninput="state.soundFile = this.value.trim()">
-        <div style="font-size:11px;color:var(--text-muted);margin-top:5px;">Drop your MP3/WAV files in a consistent folder, e.g. <code style="color:var(--accent)">C:\stream\sounds\</code></div>
+        <label>Sound File</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="file" id="customSoundInput" accept="audio/*" style="display:none" onchange="loadCustomSound(this)">
+          <button class="btn-secondary" onclick="document.getElementById('customSoundInput').click()" style="font-size:12px;padding:6px 12px;">Choose File</button>
+          <span id="customSoundName" style="font-size:12px;color:var(--text-muted);font-style:italic;">No file chosen</span>
+          <button id="customSoundClear" onclick="clearCustomSound()" style="display:none;font-size:11px;padding:4px 8px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#f87171;border-radius:4px;cursor:pointer;">✕</button>
+        </div>
       </div>
 
       <div class="form-group">
@@ -1191,7 +1193,7 @@ function loadStateToForm() {
   document.getElementById('achCategory').value = state.category;
   document.getElementById('achSound').value = state.sound;
   document.getElementById('customSoundGroup').style.display = state.sound === 'custom' ? 'block' : 'none';
-  document.getElementById('customSoundPath').value = state.soundFile || '';
+  document.getElementById('customSoundName').textContent = state.soundFileName || 'No file chosen';
   document.getElementById('achXP').value = state.xp;
   document.getElementById('xpDisplay').textContent = state.xp + ' XP';
 }
@@ -1324,12 +1326,9 @@ function playSound(type) {
     },
     custom: () => {
       if (state.soundFile) {
-        // Normalize path to file:/// URL for browser playback
-        const url = state.soundFile.startsWith('http') ? state.soundFile
-          : 'file:///' + state.soundFile.replace(/\\/g, '/').replace(/^\/+/, '');
-        const audio = new Audio(url);
+        const audio = new Audio(state.soundFile);
         audio.volume = 0.8;
-        audio.play().catch(e => console.warn('Custom sound playback failed — check the path:', e));
+        audio.play().catch(e => console.warn('Custom sound playback failed:', e));
         return;
       }
       // Fallback tone if no path set
@@ -1350,6 +1349,24 @@ function playSound(type) {
 function onSoundChange(val) {
   state.sound = val;
   document.getElementById('customSoundGroup').style.display = val === 'custom' ? 'block' : 'none';
+}
+
+function loadCustomSound(input) {
+  const file = input.files[0];
+  if (!file) return;
+  state.soundFile = URL.createObjectURL(file);
+  state.soundFileName = file.name;
+  document.getElementById('customSoundName').textContent = file.name;
+  document.getElementById('customSoundClear').style.display = 'inline-block';
+}
+
+function clearCustomSound() {
+  if (state.soundFile) URL.revokeObjectURL(state.soundFile);
+  state.soundFile = null;
+  state.soundFileName = null;
+  document.getElementById('customSoundInput').value = '';
+  document.getElementById('customSoundName').textContent = 'No file chosen';
+  document.getElementById('customSoundClear').style.display = 'none';
 }
 
 function fireAnimation() {
@@ -1430,10 +1447,12 @@ function addToCollection() {
     category: state.category,
     rarity: state.rarity,
     icon: state.icon,
+    iconImage: state.iconImage || null,
     xp: state.xp,
     onePerViewer: true,
     sound: state.sound,
     soundFile: state.soundFile || null,
+    soundFileName: state.soundFileName || null,
     color: state.color,
     earnedBy: []
   };
@@ -1453,9 +1472,13 @@ function previewFromCollection(id) {
   if (!a) return;
   state = {
     name: a.name, flavor: a.description, icon: a.icon,
+    iconImage: a.iconImage || null,
     rarity: a.rarity, trigger: a.trigger, category: a.category,
-    sound: a.sound, xp: a.xp, color: a.color, onePerViewer: true
+    sound: a.sound, soundFile: a.soundFile || null, soundFileName: a.soundFileName || null,
+    xp: a.xp, color: a.color, onePerViewer: true
   };
+  document.getElementById('customSoundName').textContent = a.soundFileName || 'No file chosen';
+  document.getElementById('customSoundClear').style.display = a.soundFile ? 'inline-block' : 'none';
   loadStateToForm();
   buildEmojiGrid();
   buildColorGrid();
@@ -1482,7 +1505,7 @@ function renderCollection() {
     const item = document.createElement('div');
     item.className = 'achievement-item';
     item.innerHTML = `
-      <div class="item-icon" style="border:1px solid ${cfg.color}44; color:${cfg.color};">${a.icon}</div>
+      <div class="item-icon" style="border:1px solid ${cfg.color}44; color:${cfg.color};">${a.iconImage ? `<img src="${a.iconImage}" style="width:32px;height:32px;object-fit:contain;border-radius:4px;">` : a.icon}</div>
       <div class="item-info">
         <div class="item-name" title="${a.name}">${a.name}</div>
         <div class="item-meta">
