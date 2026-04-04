@@ -835,6 +835,9 @@
       <div style="margin-top:10px;">
         <label>Upload Image</label>
         <input type="file" id="iconUpload" accept="image/*" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:13px;cursor:pointer;">
+        <div style="margin-top:5px;font-size:11px;color:var(--text-dimmer);font-family:'JetBrains Mono',monospace;line-height:1.5;">
+          Save image to <span style="color:var(--accent2);">C:\stream\images\</span> for the overlay to display it.
+        </div>
       </div>
       <div style="margin-top:8px;">
         <label>Image URL</label>
@@ -992,6 +995,8 @@
         Achievement Collection
         <span class="collection-count" id="collectionCount">0</span>
       </div>
+      <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importJSON(this)">
+      <button class="export-btn" onclick="document.getElementById('importFileInput').click()" style="background:#1a1a38;border:1px solid rgba(255,255,255,0.15);">⬆ Import JSON</button>
       <button class="export-btn" id="exportBtn">⬇ Export JSON</button>
     </div>
     <div class="achievement-grid" id="achievementGrid"></div>
@@ -1411,7 +1416,9 @@ function applyIconUrl() {
 }
 
 function clearCustomIcon() {
+  if (state.iconImage && state.iconImage.startsWith('blob:')) URL.revokeObjectURL(state.iconImage);
   state.iconImage = null;
+  state.iconFileName = null;
   document.getElementById('iconUrl').value = '';
   document.getElementById('iconUpload').value = '';
   document.getElementById('iconPreviewWrap').style.display = 'none';
@@ -1422,16 +1429,15 @@ function clearCustomIcon() {
 document.getElementById('iconUpload').addEventListener('change', function() {
   const file = this.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    state.iconImage = e.target.result;
-    document.getElementById('iconPreviewImg').src = e.target.result;
-    document.getElementById('iconPreviewWrap').style.display = 'block';
-    document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
-    renderPreview();
-    updatePrompt();
-  };
-  reader.readAsDataURL(file);
+  // Store filename for JSON export; use object URL for preview only
+  state.iconFileName = file.name;
+  const previewUrl = URL.createObjectURL(file);
+  state.iconImage = previewUrl; // preview only, never exported
+  document.getElementById('iconPreviewImg').src = previewUrl;
+  document.getElementById('iconPreviewWrap').style.display = 'block';
+  document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+  renderPreview();
+  updatePrompt();
 });
 
 function generateId(name) {
@@ -1447,12 +1453,12 @@ function addToCollection() {
     category: state.category,
     rarity: state.rarity,
     icon: state.icon,
-    iconImage: state.iconImage || null,
+    iconFile: state.iconFileName || null,        // filename only, not base64
+    iconImage: state.iconImage || null,          // kept for in-session preview only
     xp: state.xp,
     onePerViewer: true,
     sound: state.sound,
-    soundFile: state.soundFile || null,
-    soundFileName: state.soundFileName || null,
+    soundFile: state.soundFileName || null,      // filename for export; object URL not stored
     color: state.color,
     earnedBy: []
   };
@@ -1527,7 +1533,12 @@ function renderCollection() {
 // EXPORT
 // =============================================
 function exportJSON() {
-  const data = { achievements: collection };
+  // Strip in-session preview fields (base64 / object URLs) before export
+  const exportCollection = collection.map(a => {
+    const { iconImage, ...rest } = a; // drop iconImage (preview only)
+    return rest;
+  });
+  const data = { achievements: exportCollection };
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -1537,6 +1548,24 @@ function exportJSON() {
   a.click();
   URL.revokeObjectURL(url);
   showToast('📦 Exported dcc-achievements.json!');
+}
+
+function importJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      const incoming = parsed.achievements || (Array.isArray(parsed) ? parsed : null);
+      if (!incoming) { showToast('⚠️ Invalid JSON format.'); return; }
+      collection = incoming;
+      renderCollection();
+      showToast(`✅ Loaded ${collection.length} achievements.`);
+    } catch(err) { showToast('⚠️ Could not parse JSON file.'); }
+  };
+  reader.readAsText(file);
+  input.value = ''; // reset so same file can be re-imported
 }
 
 // =============================================
