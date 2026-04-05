@@ -946,10 +946,10 @@
     </div>
 
     <div class="panel-section" style="border-bottom:none;">
-      <div class="prompt-label" style="margin-bottom:8px;">Streamer.bot Export Prompt</div>
-      <div class="prompt-text" id="promptText" style="font-size:11px;line-height:1.7;"></div>
+      <div class="prompt-label" style="margin-bottom:8px;">Streamer.bot C# Code</div>
+      <div class="prompt-text" id="promptText" style="font-size:11px;line-height:1.6;max-height:260px;overflow-y:auto;white-space:pre;"></div>
       <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-        <button class="copy-btn" id="copyPromptBtn">Copy Prompt</button>
+        <button class="copy-btn" id="copyPromptBtn">Copy C#</button>
       </div>
     </div>
 
@@ -1110,8 +1110,25 @@ const SAMPLE_ACHIEVEMENTS = [
   }
 ];
 
-let collection = JSON.parse(JSON.stringify(SAMPLE_ACHIEVEMENTS));
+let collection = loadCollectionFromStorage();
 let animTimeout = null;
+let editingId = null;
+
+function loadCollectionFromStorage() {
+  try {
+    const saved = localStorage.getItem('achievement_collection');
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(SAMPLE_ACHIEVEMENTS));
+}
+
+function saveCollectionToStorage() {
+  try {
+    localStorage.setItem('achievement_collection', JSON.stringify(collection));
+  } catch(e) {
+    showToast('⚠️ localStorage save failed.');
+  }
+}
 
 // =============================================
 // INIT
@@ -1429,15 +1446,17 @@ function clearCustomIcon() {
 document.getElementById('iconUpload').addEventListener('change', function() {
   const file = this.files[0];
   if (!file) return;
-  // Store filename for JSON export; use object URL for preview only
-  state.iconFileName = file.name;
-  const previewUrl = URL.createObjectURL(file);
-  state.iconImage = previewUrl; // preview only, never exported
-  document.getElementById('iconPreviewImg').src = previewUrl;
-  document.getElementById('iconPreviewWrap').style.display = 'block';
-  document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
-  renderPreview();
-  updatePrompt();
+  const reader = new FileReader();
+  reader.onload = e => {
+    state.iconImage = e.target.result; // base64 data URL — persists everywhere
+    state.iconFileName = file.name;
+    document.getElementById('iconPreviewImg').src = e.target.result;
+    document.getElementById('iconPreviewWrap').style.display = 'block';
+    document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+    renderPreview();
+    updatePrompt();
+  };
+  reader.readAsDataURL(file);
 });
 
 function generateId(name) {
@@ -1445,6 +1464,35 @@ function generateId(name) {
 }
 
 function addToCollection() {
+  if (editingId) {
+    // Update existing achievement in place
+    const idx = collection.findIndex(a => a.id === editingId);
+    if (idx !== -1) {
+      collection[idx] = {
+        ...collection[idx],
+        name: state.name || 'Unnamed Achievement',
+        description: state.flavor || '',
+        trigger: state.trigger,
+        category: state.category,
+        rarity: state.rarity,
+        icon: state.icon,
+        iconFile: state.iconFileName || null,
+        iconImage: state.iconImage || null,
+        xp: state.xp,
+        sound: state.sound,
+        soundFile: state.soundFileName || null,
+        color: state.color,
+      };
+      saveCollectionToStorage();
+      renderCollection();
+      showToast(`✅ "${collection[idx].name}" updated!`);
+    }
+    editingId = null;
+    document.getElementById('addToCollectionBtn').textContent = '⚔️ Add to Collection';
+    return;
+  }
+
+  // New achievement
   const achievement = {
     id: generateId(state.name || 'achievement'),
     name: state.name || 'Unnamed Achievement',
@@ -1453,22 +1501,24 @@ function addToCollection() {
     category: state.category,
     rarity: state.rarity,
     icon: state.icon,
-    iconFile: state.iconFileName || null,        // filename only, not base64
-    iconImage: state.iconImage || null,          // kept for in-session preview only
+    iconFile: state.iconFileName || null,
+    iconImage: state.iconImage || null,
     xp: state.xp,
     onePerViewer: true,
     sound: state.sound,
-    soundFile: state.soundFileName || null,      // filename for export; object URL not stored
+    soundFile: state.soundFileName || null,
     color: state.color,
     earnedBy: []
   };
   collection.push(achievement);
+  saveCollectionToStorage();
   renderCollection();
   showToast(`⚔️ "${achievement.name}" added to collection!`);
 }
 
 function deleteFromCollection(id) {
   collection = collection.filter(a => a.id !== id);
+  saveCollectionToStorage();
   renderCollection();
   showToast('🗑️ Achievement removed.');
 }
@@ -1476,15 +1526,24 @@ function deleteFromCollection(id) {
 function previewFromCollection(id) {
   const a = collection.find(x => x.id === id);
   if (!a) return;
+  editingId = id;
   state = {
     name: a.name, flavor: a.description, icon: a.icon,
     iconImage: a.iconImage || null,
+    iconFileName: a.iconFile || null,
     rarity: a.rarity, trigger: a.trigger, category: a.category,
     sound: a.sound, soundFile: a.soundFile || null, soundFileName: a.soundFileName || null,
     xp: a.xp, color: a.color, onePerViewer: true
   };
+  if (state.iconImage) {
+    document.getElementById('iconPreviewImg').src = state.iconImage;
+    document.getElementById('iconPreviewWrap').style.display = 'block';
+  } else {
+    document.getElementById('iconPreviewWrap').style.display = 'none';
+  }
   document.getElementById('customSoundName').textContent = a.soundFileName || 'No file chosen';
   document.getElementById('customSoundClear').style.display = a.soundFile ? 'inline-block' : 'none';
+  document.getElementById('addToCollectionBtn').textContent = '💾 Save Changes';
   loadStateToForm();
   buildEmojiGrid();
   buildColorGrid();
@@ -1533,12 +1592,7 @@ function renderCollection() {
 // EXPORT
 // =============================================
 function exportJSON() {
-  // Strip in-session preview fields (base64 / object URLs) before export
-  const exportCollection = collection.map(a => {
-    const { iconImage, ...rest } = a; // drop iconImage (preview only)
-    return rest;
-  });
-  const data = { achievements: exportCollection };
+  const data = { achievements: collection };
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -1560,6 +1614,7 @@ function importJSON(input) {
       const incoming = parsed.achievements || (Array.isArray(parsed) ? parsed : null);
       if (!incoming) { showToast('⚠️ Invalid JSON format.'); return; }
       collection = incoming;
+      saveCollectionToStorage();
       renderCollection();
       showToast(`✅ Loaded ${collection.length} achievements.`);
     } catch(err) { showToast('⚠️ Could not parse JSON file.'); }
@@ -1572,18 +1627,74 @@ function importJSON(input) {
 // PROMPT OUTPUT
 // =============================================
 function updatePrompt() {
-  const cfg = RARITY_CONFIG[state.rarity] || RARITY_CONFIG.common;
-  const triggerMap = { auto: 'automatically on a chat event', manual: 'manually by the streamer', mixed: 'via mixed trigger (condition + streamer approval)' };
-  const soundMap = { fanfare: 'fanfare', sad_trombone: 'sad trombone', evil_laugh: 'evil laugh', dungeon_bell: 'dungeon bell', custom: 'custom audio' };
+  const esc = s => (s || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\r?\n/g, '\\n');
 
-  const prompt = `Create a Streamer.bot action for the "${state.name || 'Achievement'}" achievement.\n` +
-    `Rarity: ${cfg.label} | Category: ${state.category} | XP: +${state.xp}\n` +
-    `Trigger: Assigned ${triggerMap[state.trigger] || state.trigger}.\n` +
-    `Overlay: Display OBS alert with icon "${state.icon}", badge color ${state.color}, play ${soundMap[state.sound] || state.sound} sound.\n` +
-    `Flavor text: "${state.flavor || 'No flavor text'}"\n` +
-    `Storage: Track in JSON file — check earnedBy[] array before granting. onePerViewer = true. Append username to earnedBy[] on grant.`;
+  const iconIsBase64 = state.iconImage && state.iconImage.startsWith('data:');
+  const iconIsUrl    = state.iconImage && (state.iconImage.startsWith('http') || state.iconImage.startsWith('//'));
+  const iconBase64   = iconIsBase64 ? state.iconImage : '';
+  const iconUrl      = iconIsUrl    ? state.iconImage : '';
 
-  document.getElementById('promptText').textContent = prompt;
+  const shortcode = (state.name || 'achievement')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+  const lines = [
+    'using System;',
+    'using Newtonsoft.Json;',
+    'using Newtonsoft.Json.Linq;',
+    '',
+    'public class CPHInline',
+    '{',
+    '    public bool Execute()',
+    '    {',
+    '        // ── ' + esc(state.name || 'Achievement') + ' ──',
+    '        string id          = "' + shortcode + '";',
+    '        string name        = "' + esc(state.name || '') + '";',
+    '        string description = "' + esc(state.flavor || '') + '";',
+    '        string rarity      = "' + state.rarity + '";',
+    '        string icon        = "' + esc(state.icon || '') + '"; // emoji fallback — overlay uses this when no custom image is present',
+    '        string iconBase64  = "' + iconBase64 + '";',
+    '        string iconUrl     = "' + esc(iconUrl) + '";',
+    '        string color       = "' + state.color + '";',
+    '        string sound       = "' + state.sound + '";',
+    '        int    xp          = ' + state.xp + ';',
+    '',
+    '        // Set this action\'s command trigger in Streamer.bot to: !' + shortcode + ' @viewername',
+    '        string target = args.ContainsKey("input0")',
+    '            ? args["input0"].ToString().Replace("@", "").Trim()',
+    '            : "";',
+    '        if (string.IsNullOrEmpty(target)) return false;',
+    '',
+    '        // One-per-viewer gate',
+    '        string varKey      = "ach_" + id + "_" + target.ToLower();',
+    '        bool alreadyEarned = CPH.GetGlobalVar<bool>(varKey, false);',
+    '        if (alreadyEarned) {',
+    '            CPH.SendMessage("@" + target + " already has \\"" + name + "\\"!");',
+    '            return true;',
+    '        }',
+    '        CPH.SetGlobalVar(varKey, true, true);',
+    '',
+    '        // Broadcast to OBS overlay',
+    '        var payload = new JObject {',
+    '            ["type"]        = "achievement",',
+    '            ["viewer"]      = target,',
+    '            ["name"]        = name,',
+    '            ["description"] = description,',
+    '            ["rarity"]      = rarity,',
+    '            ["icon"]        = icon,',
+    '            ["iconBase64"]  = iconBase64,',
+    '            ["iconUrl"]     = iconUrl,',
+    '            ["color"]       = color,',
+    '            ["sound"]       = sound,',
+    '            ["xp"]          = xp',
+    '        };',
+    '        CPH.WebsocketBroadcastJson(payload.ToString(Formatting.None));',
+    '        CPH.SendMessage("🏆 @" + target + " just earned: " + name + "! (" + rarity.ToUpper() + " | +" + xp + " XP)");',
+    '        return true;',
+    '    }',
+    '}'
+  ];
+
+  document.getElementById('promptText').textContent = lines.join('\n');
 }
 
 function copyPrompt() {
