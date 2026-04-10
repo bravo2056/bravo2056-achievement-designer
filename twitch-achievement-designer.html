@@ -1674,11 +1674,20 @@ function updatePrompt() {
     '        string sound       = "' + state.sound + '"; // built-in synth name, ignored when soundFile is set',
     '        int    xp          = ' + state.xp + ';',
     '',
-    '        // Set this action\'s command trigger in Streamer.bot to: !' + shortcode + ' @viewername',
-    '        string target = args.ContainsKey("input0")',
-    '            ? args["input0"].ToString().Replace("@", "").Trim()',
-    '            : "";',
-    '        if (string.IsNullOrEmpty(target)) return false;',
+    ...(state.trigger === 'auto'
+      ? [
+          '        // Auto trigger — set this action\'s trigger in Streamer.bot to the event (First Words, Raid, Sub, etc.)',
+          '        string target = args.ContainsKey("user") ? args["user"].ToString().Trim() : "";',
+          '        if (string.IsNullOrEmpty(target)) return false;',
+        ]
+      : [
+          '        // Grant trigger — set this action\'s command trigger in Streamer.bot to: !' + shortcode + ' @viewername',
+          '        string target = args.ContainsKey("input0")',
+          '            ? args["input0"].ToString().Replace("@", "").Trim()',
+          '            : "";',
+          '        if (string.IsNullOrEmpty(target)) return false;',
+        ]
+    ),
     '',
     '        // One-per-viewer gate',
     '        string varKey      = "ach_" + id + "_" + target.ToLower();',
