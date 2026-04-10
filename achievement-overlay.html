@@ -306,8 +306,14 @@ function playSound(type) {
 function showAchievement(data) {
   const rarity = RARITY[data.rarity] || RARITY.common;
 
-  // Play sound
-  playSound(data.sound || 'fanfare');
+  // Play sound — use soundFile (relative path) if present, otherwise built-in synth
+  if (data.soundFile) {
+    const audio = new Audio(`./sounds/${data.soundFile}`);
+    audio.volume = 0.8;
+    audio.play().catch(() => playSound(data.sound || 'fanfare'));
+  } else {
+    playSound(data.sound || 'fanfare');
+  }
 
   // Apply rarity CSS vars
   card.style.setProperty('--rarity-color', rarity.color);
@@ -316,11 +322,17 @@ function showAchievement(data) {
 
   // Populate content
   rarityBadge.textContent = rarity.label;
-  achIcon.textContent     = data.icon || '🏆';
+  // Icon: use image file (relative path) if present, otherwise emoji fallback
+  if (data.iconFile) {
+    const fallback = (data.icon || '🏆').replace(/'/g, "\\'");
+    achIcon.innerHTML = `<img src="./images/${data.iconFile}" style="width:48px;height:48px;object-fit:contain;border-radius:6px;" onerror="this.parentElement.textContent='${fallback}'">`;
+  } else {
+    achIcon.textContent = data.icon || '🏆';
+  }
   achName.textContent     = data.name || 'Achievement Unlocked';
-  achDesc.textContent     = data.description || '';
+  achDesc.textContent     = data.description || data.flavor || '';
   xpLabel.textContent     = `+${data.xp || 0} XP`;
-  viewerTag.textContent   = data.viewer ? `Earned by ${data.viewer}` : '';
+  viewerTag.textContent   = (data.userName || data.viewer) ? `Earned by ${data.userName || data.viewer}` : '';
 
   // Reset XP bar
   xpBar.style.transition = 'none';

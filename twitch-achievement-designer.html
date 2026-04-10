@@ -947,6 +947,7 @@
 
     <div class="panel-section" style="border-bottom:none;">
       <div class="prompt-label" style="margin-bottom:8px;">Streamer.bot C# Code</div>
+      <div id="fileReminder" style="display:none;background:#1e2a1e;border:1px solid #4ade80;border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:11px;color:#4ade80;line-height:1.5;"></div>
       <div class="prompt-text" id="promptText" style="font-size:11px;line-height:1.6;max-height:260px;overflow-y:auto;white-space:pre;"></div>
       <div style="display:flex;justify-content:flex-end;margin-top:8px;">
         <button class="copy-btn" id="copyPromptBtn">Copy C#</button>
@@ -1376,14 +1377,17 @@ function onSoundChange(val) {
 function loadCustomSound(input) {
   const file = input.files[0];
   if (!file) return;
-  state.soundFile = URL.createObjectURL(file);
-  state.soundFileName = file.name;
-  document.getElementById('customSoundName').textContent = file.name;
-  document.getElementById('customSoundClear').style.display = 'inline-block';
+  const reader = new FileReader();
+  reader.onload = e => {
+    state.soundFile = e.target.result; // base64 data URL — persists everywhere
+    state.soundFileName = file.name;
+    document.getElementById('customSoundName').textContent = file.name;
+    document.getElementById('customSoundClear').style.display = 'inline-block';
+  };
+  reader.readAsDataURL(file);
 }
 
 function clearCustomSound() {
-  if (state.soundFile) URL.revokeObjectURL(state.soundFile);
   state.soundFile = null;
   state.soundFileName = null;
   document.getElementById('customSoundInput').value = '';
@@ -1481,6 +1485,7 @@ function addToCollection() {
         xp: state.xp,
         sound: state.sound,
         soundFile: state.soundFileName || null,
+        soundData: state.soundFile || null,
         color: state.color,
       };
       saveCollectionToStorage();
@@ -1507,6 +1512,7 @@ function addToCollection() {
     onePerViewer: true,
     sound: state.sound,
     soundFile: state.soundFileName || null,
+    soundData: state.soundFile || null,
     color: state.color,
     earnedBy: []
   };
@@ -1532,7 +1538,7 @@ function previewFromCollection(id) {
     iconImage: a.iconImage || null,
     iconFileName: a.iconFile || null,
     rarity: a.rarity, trigger: a.trigger, category: a.category,
-    sound: a.sound, soundFile: a.soundFile || null, soundFileName: a.soundFileName || null,
+    sound: a.sound, soundFile: a.soundData || null, soundFileName: a.soundFile || null,
     xp: a.xp, color: a.color, onePerViewer: true
   };
   if (state.iconImage) {
@@ -1629,13 +1635,23 @@ function importJSON(input) {
 function updatePrompt() {
   const esc = s => (s || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\r?\n/g, '\\n');
 
-  const iconIsBase64 = state.iconImage && state.iconImage.startsWith('data:');
-  const iconIsUrl    = state.iconImage && (state.iconImage.startsWith('http') || state.iconImage.startsWith('//'));
-  const iconBase64   = iconIsBase64 ? state.iconImage : '';
-  const iconUrl      = iconIsUrl    ? state.iconImage : '';
+  const iconFile  = state.iconFileName || '';
+  const soundFile = (state.sound === 'custom' && state.soundFileName) ? state.soundFileName : '';
 
   const shortcode = (state.name || 'achievement')
     .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+  // File reminder banner
+  const reminder = document.getElementById('fileReminder');
+  const reminders = [];
+  if (iconFile)  reminders.push('🖼 Copy <strong>' + iconFile + '</strong> → <code>stream/images/</code>');
+  if (soundFile) reminders.push('🔊 Copy <strong>' + soundFile + '</strong> → <code>stream/sounds/</code>');
+  if (reminders.length) {
+    reminder.innerHTML = reminders.join('<br>');
+    reminder.style.display = 'block';
+  } else {
+    reminder.style.display = 'none';
+  }
 
   const lines = [
     'using System;',
@@ -1652,10 +1668,10 @@ function updatePrompt() {
     '        string description = "' + esc(state.flavor || '') + '";',
     '        string rarity      = "' + state.rarity + '";',
     '        string icon        = "' + esc(state.icon || '') + '"; // emoji fallback — overlay uses this when no custom image is present',
-    '        string iconBase64  = "' + iconBase64 + '";',
-    '        string iconUrl     = "' + esc(iconUrl) + '";',
+    '        string iconFile    = "' + esc(iconFile) + '"; // filename in stream/images/ — overlay loads via relative path',
+    '        string soundFile   = "' + esc(soundFile) + '"; // filename in stream/sounds/ — empty string uses built-in synth sound',
     '        string color       = "' + state.color + '";',
-    '        string sound       = "' + state.sound + '";',
+    '        string sound       = "' + state.sound + '"; // built-in synth name, ignored when soundFile is set',
     '        int    xp          = ' + state.xp + ';',
     '',
     '        // Set this action\'s command trigger in Streamer.bot to: !' + shortcode + ' @viewername',
@@ -1681,8 +1697,8 @@ function updatePrompt() {
     '            ["description"] = description,',
     '            ["rarity"]      = rarity,',
     '            ["icon"]        = icon,',
-    '            ["iconBase64"]  = iconBase64,',
-    '            ["iconUrl"]     = iconUrl,',
+    '            ["iconFile"]    = iconFile,',
+    '            ["soundFile"]   = soundFile,',
     '            ["color"]       = color,',
     '            ["sound"]       = sound,',
     '            ["xp"]          = xp',
