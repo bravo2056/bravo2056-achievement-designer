@@ -326,6 +326,34 @@
   .rarity-btn.selected-legendary { border-color: var(--legendary); color: var(--legendary); background: rgba(251,191,36,0.1); }
   .rarity-btn.selected-secret { border-color: var(--secret); color: var(--secret); background: rgba(244,114,182,0.1); }
 
+  /* Grant mode selector (Single / Bulk) */
+  .grant-mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .grant-mode-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 10px 8px;
+    border-radius: 6px;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .grant-mode-btn:hover { border-color: var(--border2); color: var(--text); }
+  .grant-mode-btn.selected {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(157,92,255,0.12);
+    box-shadow: 0 0 0 1px rgba(157,92,255,0.3) inset;
+  }
+  .grant-mode-btn .gm-sub { display:block; font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text-dimmer); letter-spacing:0; margin-top:3px; text-transform:none; }
+
   .btn-primary {
     width: 100%;
     background: linear-gradient(135deg, var(--accent), #9d5cff);
@@ -816,6 +844,11 @@
   <div class="controls-panel">
 
     <div class="panel-section">
+      <button class="export-btn" id="newAchievementBtn" style="width:100%;background:#1a1a38;border:1px solid rgba(255,255,255,0.15);">➕ New Achievement (clear form)</button>
+      <div id="editModeBanner" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.4);border-radius:6px;font-size:11px;color:#fbbf24;text-align:center;font-family:'JetBrains Mono',monospace;">⚠️ EDITING EXISTING — changes will overwrite</div>
+    </div>
+
+    <div class="panel-section">
       <div class="panel-section-title">Identity</div>
 
       <div class="form-group">
@@ -866,6 +899,14 @@
 
     <div class="panel-section">
       <div class="panel-section-title">Configuration</div>
+
+      <div class="form-group">
+        <label>Grant Mode</label>
+        <div class="grant-mode-grid" id="grantModeGrid">
+          <button class="grant-mode-btn" data-mode="single">👤 Single<span class="gm-sub">one viewer</span></button>
+          <button class="grant-mode-btn" data-mode="bulk">👥 Bulk<span class="gm-sub">whole chat</span></button>
+        </div>
+      </div>
 
       <div class="form-group">
         <label>Trigger Type</label>
@@ -1047,7 +1088,8 @@ const DEFAULT_STATE = {
   soundFile: null,
   xp: 500,
   color: '#fbbf24',
-  onePerViewer: true
+  onePerViewer: true,
+  grantMode: 'single'
 };
 
 let state = { ...DEFAULT_STATE };
@@ -1138,6 +1180,7 @@ function init() {
   buildEmojiGrid();
   buildColorGrid();
   buildRarityGrid();
+  buildGrantModeGrid();
   bindEvents();
   loadStateToForm();
   renderPreview();
@@ -1149,6 +1192,7 @@ function init() {
 
 function buildEmojiGrid() {
   const grid = document.getElementById('emojiGrid');
+  grid.innerHTML = '';
   EMOJIS.forEach(emoji => {
     const btn = document.createElement('button');
     btn.className = 'emoji-btn';
@@ -1168,6 +1212,7 @@ function buildEmojiGrid() {
 
 function buildColorGrid() {
   const grid = document.getElementById('colorGrid');
+  grid.innerHTML = '';
   COLORS.forEach(color => {
     const btn = document.createElement('button');
     btn.className = 'color-btn';
@@ -1182,6 +1227,20 @@ function buildColorGrid() {
     });
     if (color === state.color) btn.classList.add('selected');
     grid.appendChild(btn);
+  });
+}
+
+function buildGrantModeGrid() {
+  const grid = document.getElementById('grantModeGrid');
+  if (!grid) return;
+  grid.querySelectorAll('.grant-mode-btn').forEach(btn => {
+    const mode = btn.dataset.mode;
+    btn.classList.toggle('selected', mode === state.grantMode);
+    btn.onclick = () => {
+      state.grantMode = mode;
+      grid.querySelectorAll('.grant-mode-btn').forEach(b => b.classList.toggle('selected', b.dataset.mode === mode));
+      updatePrompt();
+    };
   });
 }
 
@@ -1243,6 +1302,7 @@ function bindEvents() {
   });
 
   document.getElementById('addToCollectionBtn').addEventListener('click', addToCollection);
+  document.getElementById('newAchievementBtn').addEventListener('click', newAchievement);
   document.getElementById('fireAnimBtn').addEventListener('click', fireAnimation);
   document.getElementById('resetAnimBtn').addEventListener('click', resetAnimation);
   document.getElementById('exportBtn').addEventListener('click', exportJSON);
@@ -1257,8 +1317,10 @@ function renderPreview() {
 
   // Icon: circular ring color = rarity color
   const iconWrap = document.getElementById('cardIcon');
-  if (state.iconImage) {
-    iconWrap.innerHTML = `<img src="${state.iconImage}" style="width:44px;height:44px;object-fit:contain;border-radius:6px;">`;
+  const iconSrc = state.iconImage || (state.iconFileName ? `./stream/images/${state.iconFileName}` : null);
+  if (iconSrc) {
+    const fallbackEmoji = (state.icon || '🏆').replace(/"/g, '&quot;');
+    iconWrap.innerHTML = `<img src="${iconSrc}" style="width:44px;height:44px;object-fit:contain;border-radius:6px;" onerror="this.parentElement.textContent='${fallbackEmoji}'">`;
   } else {
     iconWrap.textContent = state.icon;
   }
@@ -1467,6 +1529,44 @@ function generateId(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') + '_' + Date.now().toString(36);
 }
 
+function newAchievement() {
+  editingId = null;
+  state = {
+    name: '',
+    flavor: '',
+    icon: '🏆',
+    iconImage: null,
+    iconFileName: null,
+    rarity: 'common',
+    trigger: 'manual',
+    category: 'Chat Activity',
+    sound: 'fanfare',
+    soundFile: null,
+    soundFileName: null,
+    xp: 100,
+    color: '#9ca3af',
+    onePerViewer: true,
+    grantMode: 'single'
+  };
+  document.getElementById('iconPreviewWrap').style.display = 'none';
+  document.getElementById('iconPreviewImg').src = '';
+  document.getElementById('iconUpload').value = '';
+  document.getElementById('customSoundName').textContent = 'No file chosen';
+  document.getElementById('customSoundClear').style.display = 'none';
+  document.getElementById('addToCollectionBtn').textContent = '⚔️ Add to Collection';
+  document.getElementById('editModeBanner').style.display = 'none';
+  loadStateToForm();
+  buildEmojiGrid();
+  buildColorGrid();
+  buildRarityGrid();
+  buildGrantModeGrid();
+  renderPreview();
+  updatePrompt();
+  document.querySelector('.controls-panel').scrollTop = 0;
+  document.getElementById('achName').focus();
+  showToast('🆕 Form cleared — ready for a new achievement.');
+}
+
 function addToCollection() {
   if (editingId) {
     // Update existing achievement in place
@@ -1487,6 +1587,7 @@ function addToCollection() {
         soundFile: state.soundFileName || null,
         soundData: state.soundFile || null,
         color: state.color,
+        grantMode: state.grantMode || 'single',
       };
       saveCollectionToStorage();
       renderCollection();
@@ -1494,6 +1595,7 @@ function addToCollection() {
     }
     editingId = null;
     document.getElementById('addToCollectionBtn').textContent = '⚔️ Add to Collection';
+    document.getElementById('editModeBanner').style.display = 'none';
     return;
   }
 
@@ -1510,6 +1612,7 @@ function addToCollection() {
     iconImage: state.iconImage || null,
     xp: state.xp,
     onePerViewer: true,
+    grantMode: state.grantMode || 'single',
     sound: state.sound,
     soundFile: state.soundFileName || null,
     soundData: state.soundFile || null,
@@ -1539,7 +1642,8 @@ function previewFromCollection(id) {
     iconFileName: a.iconFile || null,
     rarity: a.rarity, trigger: a.trigger, category: a.category,
     sound: a.sound, soundFile: a.soundData || null, soundFileName: a.soundFile || null,
-    xp: a.xp, color: a.color, onePerViewer: true
+    xp: a.xp, color: a.color, onePerViewer: true,
+    grantMode: a.grantMode || 'single'
   };
   if (state.iconImage) {
     document.getElementById('iconPreviewImg').src = state.iconImage;
@@ -1550,10 +1654,12 @@ function previewFromCollection(id) {
   document.getElementById('customSoundName').textContent = a.soundFileName || 'No file chosen';
   document.getElementById('customSoundClear').style.display = a.soundFile ? 'inline-block' : 'none';
   document.getElementById('addToCollectionBtn').textContent = '💾 Save Changes';
+  document.getElementById('editModeBanner').style.display = 'block';
   loadStateToForm();
   buildEmojiGrid();
   buildColorGrid();
   buildRarityGrid();
+  buildGrantModeGrid();
   renderPreview();
   updatePrompt();
   fireAnimation();

@@ -332,7 +332,11 @@ function showAchievement(data) {
   achName.textContent     = data.name || 'Achievement Unlocked';
   achDesc.textContent     = data.description || data.flavor || '';
   xpLabel.textContent     = `+${data.xp || 0} XP`;
-  viewerTag.textContent   = (data.userName || data.viewer) ? `Earned by ${data.userName || data.viewer}` : '';
+  if (data.bulk && typeof data.bulkCount === 'number') {
+    viewerTag.textContent = `Earned by ${data.bulkCount} viewer${data.bulkCount === 1 ? '' : 's'}`;
+  } else {
+    viewerTag.textContent = (data.userName || data.viewer) ? `Earned by ${data.userName || data.viewer}` : '';
+  }
 
   // Reset XP bar
   xpBar.style.transition = 'none';

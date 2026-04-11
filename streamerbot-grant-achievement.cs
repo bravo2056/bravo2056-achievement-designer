@@ -12,6 +12,24 @@ public class CPHInline
 {
     public bool Execute()
     {
+        // ── Permission check: broadcaster + mods only (safety net) ────────────
+        bool hasUserContext = args.ContainsKey("isBroadcaster") || args.ContainsKey("isModerator") || args.ContainsKey("userType");
+        bool isBroadcaster  = args.ContainsKey("isBroadcaster") && Convert.ToBoolean(args["isBroadcaster"]);
+        bool isModerator    = args.ContainsKey("isModerator")   && Convert.ToBoolean(args["isModerator"]);
+        if (!isBroadcaster && !isModerator && args.ContainsKey("userType"))
+        {
+            string ut = args["userType"].ToString().ToLower();
+            isBroadcaster = ut.Contains("broadcaster");
+            isModerator   = ut.Contains("moderator") || ut == "mod";
+        }
+        if (hasUserContext && !isBroadcaster && !isModerator)
+        {
+            string caller = args.ContainsKey("user") ? args["user"].ToString() : "unknown";
+            CPH.LogWarn($"[Achievement] Refused — caller '{caller}' is not broadcaster or mod.");
+            CPH.SendMessage("Only the streamer or mods can grant achievements.");
+            return false;
+        }
+
         string shortcode = args.ContainsKey("shortcode") ? args["shortcode"].ToString().Trim().ToLower() : "";
         string userName  = args.ContainsKey("userName")  ? args["userName"].ToString().Trim()  : "";
 
